@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections import OrderedDict
 from typing import Any
 
-from ..core.auth import LOGGER
-from ..core.client import JushuitanClient
-from ..core.config import (
+from core.auth import LOGGER
+from core.client import JushuitanClient
+from core.config import (
     DETAIL_BATCH_LIMIT,
     INVENTORY_QUERY_PATH,
     MAIN_BATCH_LIMIT,
