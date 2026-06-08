@@ -10,4 +10,9 @@ services:
     ports:
       - "5011:5011"
     restart: on-failure
-    network_mode: bridge
+    networks:
+      - kocotree-skills
+
+networks:
+  kocotree-skills:
+    external: true
