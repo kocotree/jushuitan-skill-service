@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from flask import Flask, jsonify, request
 
-from core.kocotree_skills_auth import require_api_key
+from kocotree_skills_auth.auth_verify import require_auth
 from flows.inventory_query import run_inventory_query
 from flows.virtual_stock_query import run_virtual_stock_query
 
@@ -10,7 +10,7 @@ app = Flask(__name__)
 
 
 @app.route("/api/inventory/query", methods=["POST"])
-@require_api_key
+@require_auth
 def inventory_query():
     body = request.get_json(force=True)
     query_type = body.get("query_type")
@@ -33,7 +33,7 @@ def inventory_query():
 
 
 @app.route("/api/inventory/virtual-stock", methods=["POST"])
-@require_api_key
+@require_auth
 def virtual_stock_query():
     body = request.get_json(force=True)
     query_type = body.get("query_type")
