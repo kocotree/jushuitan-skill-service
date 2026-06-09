@@ -1,17 +1,3 @@
-"""后端 Flask 装饰器：无 key 则代理创建，有 key 则校验。
-
-使用方式：
-    from auth_verify import require_auth
-
-    @app.route("/my-api")
-    @require_auth
-    def my_api():
-        return jsonify({"code": 0, "data": "hello", "msg": "ok"})
-
-环境变量：
-    AUTH_SERVICE_URL  auth 服务地址，默认 http://kocotree-skills-auth:5050
-"""
-
 import os
 from functools import wraps
 
