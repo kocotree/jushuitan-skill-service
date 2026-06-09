@@ -15,6 +15,7 @@ COPY main.py ./
 COPY gunicorn.py ./
 COPY core ./core
 COPY flows ./flows
+COPY kocotree_skills_auth ./kocotree_skills_auth
 
 EXPOSE 5011
 
