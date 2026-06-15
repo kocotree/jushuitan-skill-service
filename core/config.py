@@ -8,6 +8,7 @@ INVENTORY_QUERY_PATH = "/open/inventory/query"
 VIRTUAL_STOCK_QUERY_PATH = "/open/webapi/itemapi/iteminventory/getvirtualstock"
 SKU_QUERY_PATH = "/open/sku/query"
 ITEM_QUERY_PATH = "/open/mall/item/query"
+PURCHASEIN_QUERY_PATH = "/open/webapi/wmsapi/purchasein/purchaseinquery"
 
 MAIN_BATCH_LIMIT = 100
 DETAIL_BATCH_LIMIT = 20
