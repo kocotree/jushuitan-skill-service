@@ -13,7 +13,7 @@ services:
       traefik.http.routers.jushuitan-skill-service.rule: "Host(`jushuitan.skills.kktree.cn`)"
       traefik.http.routers.jushuitan-skill-service.entrypoints: websecure
       traefik.http.routers.jushuitan-skill-service.tls: "true"
-      traefik.http.ters.jushuitan-skill-service.tls.certresolver: myresolver
+      traefik.http.routers.jushuitan-skill-service.tls.certresolver: myresolver
       traefik.http.services.jushuitan-skill-service.loadbalancer.server.port: 5011
     env_file:
       - .env

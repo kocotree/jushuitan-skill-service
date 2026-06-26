@@ -73,7 +73,7 @@ jobs:
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           source: docker-compose.yaml
-          target: ${{ secrets.DEPLOY_DIR }}
+          target: ${{ vars.DEPLOY_DIR }}
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.2.5
@@ -84,8 +84,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             set -e
-            cd "${{ secrets.DEPLOY_DIR }}"
-            echo "${{ secrets.REGISTRY_TOKEN }}" | docker login ghcr.io -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+            cd "${{ vars.DEPLOY_DIR }}"
             docker compose pull ${{ env.SERVICE_NAME }}
             docker compose up -d --remove-orphans ${{ env.SERVICE_NAME }}
             docker image prune -f
