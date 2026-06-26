@@ -1,18 +1,28 @@
 services:
   jushuitan-skill-service:
-    image: jushuitan-skill-service:1.0
+    image: ghcr.io/kocotree/jushuitan-skill-service:latest
     container_name: jushuitan-skill-service
-    build:
-      context: .
-      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${APP_HTTP_PORT:-5011}:5011"
+    expose:
+      - "5011"
+    labels:
+      traefik.enable: "true"
+      traefik.docker.network: traefik-network
+      traefik.http.routers.jushuitan-skill-service.rule: "Host(`jushuitan.skills.kktree.cn`)"
+      traefik.http.routers.jushuitan-skill-service.entrypoints: websecure
+      traefik.http.routers.jushuitan-skill-service.tls: "true"
+      traefik.http.ters.jushuitan-skill-service.tls.certresolver: myresolver
+      traefik.http.services.jushuitan-skill-service.loadbalancer.server.port: 5011
     env_file:
       - .env
-    ports:
-      - "5011:5011"
-    restart: on-failure
     networks:
       - kocotree-skills
+      - traefik-network
 
 networks:
   kocotree-skills:
+    external: true
+  traefik-network:
     external: true
