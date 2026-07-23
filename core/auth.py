@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import random
-import string
 import threading
 import time
 from datetime import datetime, timedelta, timezone
@@ -12,15 +10,16 @@ from typing import Any
 
 import requests
 
-from .config import INIT_TOKEN_URL, REFRESH_TOKEN_URL
+from .config import REFRESH_TOKEN_URL
 from .sign import generate_sign
+from .token_repository import get_latest_refresh_token
 
 
 TZ_UTC8 = timezone(timedelta(hours=8))
 LOG_PREVIEW_LIMIT = 500
 
 _token_store: dict[str, str] = {}
-_token_lock = threading.Lock()
+_token_lock = threading.RLock()
 
 
 def get_logger() -> logging.Logger:
@@ -67,21 +66,12 @@ def get_access_token() -> str | None:
     return _token_store.get("access_token")
 
 
-def get_refresh_token() -> str | None:
-    return _token_store.get("refresh_token")
-
-
 def now() -> datetime:
     return datetime.now(TZ_UTC8)
 
 
 def epoch_seconds(dt: datetime) -> str:
     return str(int(dt.timestamp()))
-
-
-def random_code(length: int = 6) -> str:
-    chars = string.ascii_letters + string.digits
-    return "".join(random.choice(chars) for _ in range(length))
 
 
 def sanitize_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -177,53 +167,57 @@ def _retry(label: str, worker) -> None:
     raise RuntimeError(f"{label} failed after 3 attempts")
 
 
-def init_token(timeout: int = 30) -> None:
-    app_key, app_secret = require_credentials()
+def refresh_token(timeout: int = 30, stale_access_token: str | None = None) -> None:
+    """
+    功能说明：从 MySQL 读取最新 refresh_token，并刷新进程内的 access_token。
 
-    def worker() -> bool:
-        created_at = now()
-        params = {
-            "app_key": app_key,
-            "timestamp": epoch_seconds(created_at),
-            "grant_type": "refresh_token",
-            "charset": "utf-8",
-            "code": random_code(6),
-        }
-        params["sign"] = generate_sign(app_secret, params)
-        response_text = _post_token(INIT_TOKEN_URL, params, timeout)
-        return bool(response_text) and _handle_token_response(response_text, created_at)
+    参数：
+        timeout：调用聚水潭刷新接口的超时时间，单位为秒。
+        stale_access_token：触发刷新时使用的旧 access_token，用于避免并发重复刷新。
 
-    _retry("init token", worker)
+    返回值：
+        None：刷新成功后更新进程内 token，不返回数据。
+    """
+    with _token_lock:
+        current_access_token = get_access_token()
+        if stale_access_token and current_access_token and current_access_token != stale_access_token:
+            LOGGER.info("access_token already refreshed by another thread, skipping duplicate refresh")
+            return
 
+        app_key, app_secret = require_credentials()
+        refresh_token_value = get_latest_refresh_token()
 
-def refresh_token(timeout: int = 30) -> None:
-    app_key, app_secret = require_credentials()
-    refresh_token_value = get_refresh_token()
-    if not refresh_token_value:
-        raise RuntimeError("missing refresh_token in token store")
+        def worker() -> bool:
+            created_at = now()
+            params = {
+                "app_key": app_key,
+                "timestamp": epoch_seconds(created_at),
+                "grant_type": "refresh_token",
+                "charset": "utf-8",
+                "refresh_token": refresh_token_value,
+                "scope": "all",
+            }
+            params["sign"] = generate_sign(app_secret, params)
+            response_text = _post_token(REFRESH_TOKEN_URL, params, timeout)
+            return bool(response_text) and _handle_token_response(response_text, created_at)
 
-    def worker() -> bool:
-        created_at = now()
-        params = {
-            "app_key": app_key,
-            "timestamp": epoch_seconds(created_at),
-            "grant_type": "refresh_token",
-            "charset": "utf-8",
-            "refresh_token": refresh_token_value,
-            "scope": "all",
-        }
-        params["sign"] = generate_sign(app_secret, params)
-        response_text = _post_token(REFRESH_TOKEN_URL, params, timeout)
-        return bool(response_text) and _handle_token_response(response_text, created_at)
-
-    _retry("refresh token", worker)
+        _retry("refresh token", worker)
 
 
 def ensure_token(timeout: int = 30) -> None:
+    """
+    功能说明：确保进程内存在可用的 access_token，缺失时使用数据库 refresh_token 刷新。
+
+    参数：
+        timeout：调用聚水潭刷新接口的超时时间，单位为秒。
+
+    返回值：
+        None：access_token 已存在或刷新成功后结束。
+    """
     if get_access_token():
         return
     with _token_lock:
         if get_access_token():
             return
-        LOGGER.info("no token in memory, initializing")
-        init_token(timeout=timeout)
+        LOGGER.info("no access_token in memory, refreshing with token from mysql")
+        refresh_token(timeout=timeout)

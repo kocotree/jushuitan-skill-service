@@ -36,7 +36,7 @@ class JushuitanClient:
         )
         if refresh_once and self._is_access_token_expired(result):
             LOGGER.info("client detected expired access_token, refreshing once")
-            refresh_token(timeout=self.timeout)
+            refresh_token(timeout=self.timeout, stale_access_token=access_token)
             new_access_token = get_access_token()
             if new_access_token:
                 result = self._call_once(

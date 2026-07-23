@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 BASE_URL = "https://openapi.jushuitan.com"
-INIT_TOKEN_URL = f"{BASE_URL}/openWeb/auth/getInitToken"
 REFRESH_TOKEN_URL = f"{BASE_URL}/openWeb/auth/refreshToken"
 
 INVENTORY_QUERY_PATH = "/open/inventory/query"
