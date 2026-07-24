@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from flask import Flask, jsonify, request
 
+from core.auth import LOGGER
 from kocotree_skills_auth.auth_verify import require_auth
 from flows.inventory_query import run_inventory_query
 from flows.purchasein_query import run_purchasein_query
@@ -30,6 +31,7 @@ def inventory_query():
         )
         return jsonify({"code": 0, "data": result})
     except Exception as e:
+        LOGGER.exception("inventory query failed")
         return jsonify({"code": -1, "msg": str(e)}), 500
 
 
@@ -55,6 +57,7 @@ def virtual_stock_query():
         )
         return jsonify({"code": 0, "data": result})
     except Exception as e:
+        LOGGER.exception("virtual stock query failed")
         return jsonify({"code": -1, "msg": str(e)}), 500
 
 
@@ -89,6 +92,7 @@ def purchasein_query():
         )
         return jsonify({"code": 0, "data": result})
     except Exception as e:
+        LOGGER.exception("purchase-in query failed")
         return jsonify({"code": -1, "msg": str(e)}), 500
 
 
