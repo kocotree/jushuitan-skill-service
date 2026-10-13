@@ -68,6 +68,20 @@ class HttpWorkerTests(unittest.TestCase):
         conn.sendall(payload)
         return conn
 
+    def test_access_log_filter(self):
+        """实际日志中过滤健康检查，保留业务及近似路径记录。"""
+        self.assertEqual(self.request("GET", "/health"), (200, b"ok"))
+        self.request("GET", "/health/details")
+        self.assertEqual(self.request("POST", "/slow", b"ok"), (200, b"ok"))
+        for _ in range(20):
+            output = os.pread(self.logs.fileno(), 1000000, 0).decode()
+            if '"POST /slow ' in output:
+                break
+            time.sleep(0.05)
+        self.assertIn('"POST /slow ', output)
+        self.assertIn('"GET /health/details ', output)
+        self.assertNotIn('"GET /health ', output)
+
     def test_headers_cannot_exhaust_threads(self):
         """八条残缺请求头超时释放后，健康接口应恢复响应。"""
         clients = [self.stalled(b"GET /health HTTP/1.1\r\nHost: test\r\nX:") for _ in range(8)]

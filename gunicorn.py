@@ -12,6 +12,7 @@ max_requests = 500
 max_requests_jitter = 50
 
 accesslog = "-"
+logger_class = "core.access_log.HealthFilteredLogger"
 errorlog = "-"
 loglevel = "info"
 capture_output = True

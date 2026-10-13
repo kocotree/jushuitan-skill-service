@@ -19,6 +19,8 @@
 
 镜像每 30 秒访问一次本地 `/health`，连续三次失败标记为 unhealthy。Docker 的健康状态用于观测；`restart: unless-stopped` 只处理进程退出，不会因为 unhealthy 自动重启。
 
+`/health` 的常规访问日志被过滤；业务接口的访问日志、异常堆栈和客户端收包超时告警正常记录。
+
 ```bash
 uv sync --frozen
 uv run python -m unittest discover -s tests -v
