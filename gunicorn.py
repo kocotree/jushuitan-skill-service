@@ -1,7 +1,7 @@
 bind = "0.0.0.0:5011"
 
 workers = 1
-worker_class = "gthread"
+worker_class = "core.http_worker.DeadlineThreadWorker"
 threads = 8
 
 timeout = 420
