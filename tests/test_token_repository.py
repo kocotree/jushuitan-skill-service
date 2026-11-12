@@ -4,7 +4,7 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from core.token_repository import get_latest_refresh_token
+from core.token_repository import get_latest_refresh_token, get_latest_token
 
 
 class TokenRepositoryTestCase(unittest.TestCase):
@@ -39,7 +39,7 @@ class TokenRepositoryTestCase(unittest.TestCase):
 
         self.assertEqual(result, "database-refresh-token")
         cursor.execute.assert_called_once()
-        self.assertIn("SELECT `refresh_token`", cursor.execute.call_args.args[0])
+        self.assertIn("`access_token`, `refresh_token`, `create_time`, `expires_in`", cursor.execute.call_args.args[0])
         connection.close.assert_called_once()
 
     @patch("core.token_repository.pymysql.connect")
@@ -49,10 +49,20 @@ class TokenRepositoryTestCase(unittest.TestCase):
         cursor = connection.cursor.return_value.__enter__.return_value
         cursor.fetchone.return_value = None
 
-        with self.assertRaisesRegex(RuntimeError, "no available refresh_token"):
-            get_latest_refresh_token()
+        with self.assertRaisesRegex(RuntimeError, "no token record"):
+            get_latest_token()
 
         connection.close.assert_called_once()
+
+    @patch("core.token_repository.pymysql.connect")
+    def test_access_token_does_not_require_refresh_token(self, connect: MagicMock) -> None:
+        """最新记录只含 access_token 时也可以正常读取。"""
+        cursor = connect.return_value.cursor.return_value.__enter__.return_value
+        cursor.fetchone.return_value = {"access_token": "database-access", "refresh_token": None}
+
+        self.assertEqual(get_latest_token()["access_token"], "database-access")
+        with self.assertRaisesRegex(RuntimeError, "no available refresh_token"):
+            get_latest_refresh_token()
 
 
 if __name__ == "__main__":

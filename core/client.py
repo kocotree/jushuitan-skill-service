@@ -24,6 +24,17 @@ class JushuitanClient:
         charset: str = "utf-8",
         refresh_once: bool = True,
     ) -> dict[str, Any]:
+        """功能说明：调用业务接口，鉴权失效时优先重读数据库，再尝试刷新令牌。
+
+        参数：
+            api_path：业务接口路径。
+            biz_params：业务查询参数。
+            version：聚水潭接口版本。
+            charset：请求字符集。
+            refresh_once：是否允许鉴权恢复，最多调用一次刷新流程。
+        返回值：
+            dict[str, Any]：上游响应或请求异常结果。
+        """
         ensure_token(timeout=self.timeout)
         access_token = get_access_token()
 
@@ -34,11 +45,21 @@ class JushuitanClient:
             version=version,
             charset=charset,
         )
-        if refresh_once and self._is_access_token_expired(result):
-            LOGGER.info("client detected expired access_token, refreshing once")
-            refresh_token(timeout=self.timeout, stale_access_token=access_token)
+        refreshed = False
+        for attempt in range(2 if refresh_once else 0):
+            if not self._is_access_token_expired(result):
+                break
+            if attempt == 0:
+                LOGGER.info("client detected invalid access_token, reloading mysql first")
+                refreshed = ensure_token(timeout=self.timeout, stale_access_token=access_token)
+            elif refreshed:
+                break
+            else:
+                LOGGER.warning("mysql access_token rejected, falling back to refresh_token")
+                refresh_token(timeout=self.timeout, stale_access_token=access_token)
             new_access_token = get_access_token()
             if new_access_token:
+                access_token = new_access_token
                 result = self._call_once(
                     api_path=api_path,
                     biz_params=biz_params,
@@ -102,4 +123,4 @@ class JushuitanClient:
         if result.get("code") != 100:
             return False
         message = str(result.get("msg") or "").replace(" ", "")
-        return "access_token已过期" in message
+        return "access_token" in message and ("过期" in message or "无效" in message)

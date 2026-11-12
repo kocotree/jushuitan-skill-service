@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from typing import Any
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -18,14 +19,14 @@ def _require_env(name: str) -> str:
     return value
 
 
-def get_latest_refresh_token() -> str:
+def get_latest_token() -> dict[str, Any]:
     """
-    功能说明：从 MySQL 的 token 表读取创建时间最新的 refresh_token。
+    功能说明：从 MySQL 的 token 表读取最新的令牌及有效期记录。
 
     返回值：
-        str：最新且非空的 refresh_token。
+        dict[str, Any]：包含 access_token、refresh_token、create_time 和 expires_in 的记录。
     """
-    LOGGER.info("loading latest refresh_token from mysql")
+    LOGGER.info("loading latest token record from mysql")
     connection = None
     try:
         connection = pymysql.connect(
@@ -44,26 +45,35 @@ def get_latest_refresh_token() -> str:
         with connection.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT `refresh_token`
+                SELECT `access_token`, `refresh_token`, `create_time`, `expires_in`
                 FROM `token`
-                WHERE `refresh_token` IS NOT NULL
-                  AND `refresh_token` <> ''
                 ORDER BY `create_time` DESC
                 LIMIT 1
                 """
             )
             row = cursor.fetchone()
     except (pymysql.MySQLError, ValueError):
-        LOGGER.exception("failed to load refresh_token from mysql")
+        LOGGER.exception("failed to load token record from mysql")
         raise
     finally:
         if connection is not None:
             connection.close()
 
-    refresh_token = str(row["refresh_token"]) if row and row.get("refresh_token") else ""
+    if not row:
+        LOGGER.error("no token record found in mysql")
+        raise RuntimeError("no token record found in mysql token table")
+
+    LOGGER.info("latest token record loaded from mysql create_time=%s", row.get("create_time"))
+    return row
+
+
+def get_latest_refresh_token() -> str:
+    """读取最新记录中的 refresh_token，缺失时抛出异常。"""
+    row = get_latest_token()
+    refresh_token = row.get("refresh_token")
     if not refresh_token:
-        LOGGER.error("no available refresh_token found in mysql")
-        raise RuntimeError("no available refresh_token found in mysql token table")
+        LOGGER.error("no available refresh_token found in latest mysql record")
+        raise RuntimeError("no available refresh_token found in latest mysql token record")
 
     LOGGER.info("latest refresh_token loaded from mysql")
-    return refresh_token
+    return str(refresh_token)
